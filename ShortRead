@@ -1,0 +1,61 @@
+
+
+
+## Using adapter for Illumina:
+fastq-mcf -o vR1.fastq.gz -o vR2.fastq.gz /data/99_genomicclass/00_shared_data/Genomics/IlluminaAdapters_V2.fasta <(gunzip -c SRR7360366_1.fastq.gz;) <(gunzip -c SRR7360366_2.fastq.gz;)
+
+##Copy the reference file:
+cp sequence.fasta seq_ref.fa
+
+##Create the index using Bowtie2-Build:
+bowtie2-build seq_ref.fa Apocynum
+
+## Map the reads and filter the output with samtools
+bowtie2 -p 8 -x Apocynum -1 vR1.fastq.gz -2 vR2.fastq.gz | samtools view -b -F 4 -o Apo_Illumina.map.bam -
+
+
+##Sort the mapped reads by position:
+samtools sort -o Apo_Illumina.map.bam Apo_Illumina.mapped.bam
+samtools index Apo_Illumina.map.bam
+
+
+## Convert bam to fastq:
+samtools fastq Apo_Illumina.map.bam -1 Apo_1_mapped.fq -2 Apo_2_mapped.fq
+
+
+##Create a fasta index file for bedtools:
+samtools faidx seq_ref.fa
+
+##Run bedtools and get the coverage per position (Assembly Evaluation-Coverage):
+bedtools genomecov -d -ibam Apo_Illumina.map.bam -g seq_ref.fa.fai > Apo_Illumina.map.covbed.txt
+
+## R command for Visualization:
+Covbed <- read.delim("Apo_Illumina.map.covbed.txt", header=FALSE)
+plot(Covbed$V3, type="l")
+
+
+##Call the variants over the previously mapped Illumina reads (Assembly evaluation - Variants):
+##Index the Bam file:
+samtools index Apo_Illumina.map.bam
+
+## Call the variants over the Illumina BAM file:
+freebayes -v Apo_Illumina.map.vcf -b Apo_Illumina.map.bam -f seq_ref.fa
+
+## Get some stats from the VCF
+## 1- Count total variants
+grep -v "#" Apo_Illumina.map.vcf | wc -l > total_var.txt
+## 2- Count variants by type
+grep -v "#" Apo_Illumina.map.vcf | cut -f8 | sed -r 's/.+;TYPE=//' | sort | uniq -c > type_var.txt
+## 3- Count non homozygous variants
+grep -v "#" Apo_Illumina.map.vcf | cut -f8,10 | sed -r 's/.+;TYPE=//' | sed -r 's/:.+//' > non_homozygous_var.txt
+
+
+fastq-stats input_file.fq > input_file.stats.txt
+## To get all the read data
+grep read *stats.txt
+
+## Run assembly:
+abyss-pe name=Apo_abyssBT2_K63 k=63 in="Apo_1_mapped.fq Apo_2_mapped.fq"
+
+
+#For annotation we use "Apo_abyssBT2_K63-contigs.fa", "Apo_abyssBT2_K41-contigs.fa" in chlorobox wbsite
