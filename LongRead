@@ -1,0 +1,24 @@
+## Select 200X of PacBio reads. The average read size is 6.6Kb. Genome size ~ 150Kb x 200 = 30,000Kb / 6.6Kb = 4,545 
+156596 * 200 = 31319200 /6600 = 4745
+
+seqtk sample -s1000 PacBio/SRR7360364_1.fastq.gz 4745 > Apo_PB.fastq
+
+
+
+##Map the PacBio reads with ngmlr
+ngmlr -t 4 -r seq_ref.fa -q Apo_PB.fastq | samtools view -Sb -F 4 -o Apo_PB.mapped.bam -
+
+
+
+##Sort the reads
+samtools sort -o Apo_PB.mapped.bam Apo_PB.mapped.bam
+
+
+##Run bedtools and get the coverage per position
+bedtools genomecov -d -ibam Apo_PB.mapped.bam -g seq_ref.fa.fai > Apo_PB.map.covbed.txt
+
+## Convert bam to fastq:
+samtools fastq Apo_PB.mapped.bam > Apo_PB_B_to_F_mapped.fq 
+
+## Run a canu assembly
+canu -d ApoCHL_canu -p ApoCHL_canu genomeSize=157k -pacbio-raw Apo_PB_B_to_F_mapped.fq
