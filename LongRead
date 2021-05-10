@@ -1,3 +1,8 @@
+## Getting data from NCBI:
+screen -L fastq-dump --defline-qual "+" --split-files --gzip --clip SRR7360364
+
+
+
 ## Select 200X of PacBio reads. The average read size is 6.6Kb. Genome size ~ 150Kb x 200 = 30,000Kb / 6.6Kb = 4,545 
 156596 * 200 = 31319200 /6600 = 4745
 
